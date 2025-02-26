@@ -1,0 +1,72 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Tecton deployment with Rift compute",
+    
+    "Parameters": {
+      "DeploymentName": {
+        "Type": "String",
+        "Description": "Deployment name must be less than 22 characters (AWS limitation)",
+        "Default": "my-deployment-name"
+      },
+      "Region": {
+        "Type": "String",
+        "Description": "AWS region",
+        "Default": "us-west-2"
+      },
+      "AccountId": {
+        "Type": "String",
+        "Description": "Your AWS account ID",
+        "Default": "1234567890"
+      },
+      "SubnetAZs": {
+        "Type": "CommaDelimitedList",
+        "Description": "Availability Zones for subnets",
+        "Default": "us-west-2a,us-west-2b,us-west-2c"
+      },
+      "TectonControlPlaneAccountId": {
+        "Type": "String",
+        "Description": "Tecton control plane account ID (get from your Tecton rep)",
+        "Default": "987654321"
+      },
+      "CrossAccountExternalId": {
+        "Type": "String",
+        "Description": "Cross account external ID (get from your Tecton rep)",
+        "Default": "tecton-external-id"
+      },
+      "TectonControlPlaneRoleName": {
+        "Type": "String",
+        "Description": "Tecton control plane role name (get from your Tecton rep)",
+        "Default": "tecton-control-plane-role"
+      },
+      "UseSparkCompute": {
+        "Type": "String",
+        "Description": "Set to true if also enable Spark compute",
+        "Default": "false",
+        "AllowedValues": ["true", "false"]
+      }
+    },
+  
+    "Resources": {
+      "TectonStack": {
+        "Type": "AWS::CloudFormation::Stack",
+        "Properties": {
+          "TemplateURL": {
+            "Fn::Sub": "FIXME"
+          },
+          "Parameters": {
+            "DeploymentName": { "Ref": "DeploymentName" },
+            "AccountId": { "Ref": "AccountId" },
+            "Region": { "Ref": "Region" },
+            "CrossAccountExternalId": { "Ref": "CrossAccountExternalId" },
+            "TectonAssumingAccountId": { "Ref": "TectonControlPlaneAccountId" },
+            "S3ReadWritePrincipals": {
+              "Fn::Sub": "arn:aws:iam::${TectonControlPlaneAccountId}:root"
+            },
+            "UseSparkCompute": { "Ref": "UseSparkCompute" },
+            "UseRiftCrossAccountPolicy": "true"
+          }
+        }
+      },
+    "Outputs": {
+    }
+  }
