@@ -1,0 +1,284 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "CloudFormation template for Tecton S3 bucket",
+    "Parameters": {
+      "DeploymentName": {
+        "Type": "String",
+        "Description": "Deployment name"
+      },
+      "AccountId": {
+        "Type": "String",
+        "Description": "AWS Account ID"
+      },
+      "Region": {
+        "Type": "String",
+        "Description": "AWS Region"
+      },
+      "S3ReadWritePrincipals": {
+        "Type": "CommaDelimitedList",
+        "Description": "List of IAM principal ARNs that should have read/write access to the S3 bucket",
+        "Default": ""
+      },
+      "TectonAssumingAccountId": {
+        "Type": "String",
+        "Description": "Tecton assuming account ID"
+      },
+      "CrossAccountExternalId": {
+        "Type": "String",
+        "Description": "External ID for cross-account role"
+      },
+      "AllowStsMetadata": {
+        "Type": "String",
+        "Description": "Allow STS metadata actions",
+        "Default": "true",
+        "AllowedValues": ["true", "false"]
+      },
+      "UseRiftCrossAccountPolicy": {
+        "Type": "String",
+        "Description": "Whether to create the Rift cross-account policy",
+        "Default": "true",
+        "AllowedValues": ["true", "false"]
+      }
+    },
+    "Resources": {
+      "TectonBucket": {
+        "Type": "AWS::S3::Bucket",
+        "Properties": {
+          "BucketName": {
+            "Fn::Sub": "tecton-${DeploymentName}"
+          },
+          "Tags": [
+            {
+              "Key": "Name",
+              "Value": {
+                "Fn::Sub": "tecton-${DeploymentName}"
+              }
+            }
+          ],
+          "BucketEncryption": {
+            "ServerSideEncryptionConfiguration": [
+              {
+                "ServerSideEncryptionByDefault": {
+                  "SSEAlgorithm": "AES256"
+                }
+              }
+            ]
+          },
+          "OwnershipControls": {
+            "Rules": [
+              {
+                "ObjectOwnership": "BucketOwnerEnforced"
+              }
+            ]
+          },
+          "PublicAccessBlockConfiguration": {
+            "BlockPublicAcls": true,
+            "IgnorePublicAcls": true,
+            "BlockPublicPolicy": true,
+            "RestrictPublicBuckets": true
+          }
+        }
+      },
+      "CrossAccountPolicyRift": {
+        "Condition": "CreateRiftCrossAccountPolicy",
+        "Type": "AWS::IAM::ManagedPolicy",
+        "Properties": {
+          "ManagedPolicyName": {
+            "Fn::Sub": "tecton-${DeploymentName}-cross-account-policy-rift"
+          },
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "DynamoDB",
+                    "Effect": "Allow",
+                    "Action": [
+                        "dynamodb:BatchGetItem",
+                        "dynamodb:BatchWriteItem",
+                        "dynamodb:ConditionCheckItem",
+                        "dynamodb:CreateTable",
+                        "dynamodb:DeleteItem",
+                        "dynamodb:DeleteTable",
+                        "dynamodb:DescribeImport",
+                        "dynamodb:DescribeTable",
+                        "dynamodb:GetItem",
+                        "dynamodb:ImportTable",
+                        "dynamodb:PutItem",
+                        "dynamodb:Query",
+                        "dynamodb:TagResource",
+                        "dynamodb:ListTagsOfResource",
+                        "dynamodb:UpdateTable",
+                        "dynamodb:UpdateTimeToLive",
+                        "dynamodb:DescribeTimeToLive"
+                    ],
+                    "Resource": [
+                        {
+                            "Fn::Sub": "arn:aws:dynamodb:${Region}:${AccountId}:table/tecton-${DeploymentName}*"
+                        }
+                    ]
+                },
+                {
+                    "Sid": "DynamoDBGlobal",
+                    "Effect": "Allow",
+                    "Action": [
+                        "dynamodb:ListTables",
+                        "dynamodb:DescribeLimits"
+                    ],
+                    "Resource": "*"
+                },
+                {
+                    "Sid": "S3Bucket",
+                    "Effect": "Allow",
+                    "Action": "s3:ListBucket",
+                    "Resource": [
+                        {
+                            "Fn::Sub": "arn:aws:s3:::tecton-${DeploymentName}"
+                        }
+                    ]
+                },
+                {
+                    "Sid": "S3Object",
+                    "Effect": "Allow",
+                    "Action": [
+                        "s3:GetObject",
+                        "s3:DeleteObject",
+                        "s3:PutObject"
+                    ],
+                    "Resource": [
+                        {
+                            "Fn::Sub": "arn:aws:s3:::tecton-${DeploymentName}/*"
+                        }
+                    ]
+                },
+                {
+                    "Sid": "VerifyPermissions",
+                    "Effect": "Allow",
+                    "Action": [
+                        "iam:GetPolicy",
+                        "iam:GetRole",
+                        "iam:GetRolePolicy",
+                        "iam:GetPolicyVersion",
+                        "iam:ListPolicyVersions",
+                        "iam:ListAttachedRolePolicies",
+                        "iam:ListInstanceProfilesForRole",
+                        "iam:ListRolePolicies"
+                    ],
+                    "Resource": [
+                        {
+                            "Fn::Sub": "arn:aws:iam::${AccountId}:policy/tecton-*"
+                        },
+                        {
+                            "Fn::Sub": "arn:aws:iam::${AccountId}:role/tecton-*"
+                        }
+                    ]
+                },
+                {
+                    "Sid": "CloudwatchLogging",
+                    "Effect": "Allow",
+                    "Action": [
+                        "logs:CreateLogGroup",
+                        "logs:CreateLogStream",
+                        "logs:DescribeLogGroups",
+                        "logs:DescribeLogStreams",
+                        "logs:PutLogEvents",
+                        "logs:PutRetentionPolicy"
+                    ],
+                    "Resource": [
+                        {
+                            "Fn::Sub": "arn:aws:logs:${Region}:${AccountId}:log-group:/aws-dynamodb/imports:*"
+                        },
+                        {
+                            "Fn::Sub": "arn:aws:logs:${Region}:${AccountId}:log-group:/aws-dynamodb/imports:log-stream:*"
+                        },
+                        {
+                            "Fn::Sub": "arn:aws:logs:${Region}:${AccountId}:log-group::log-stream:*"
+                        }
+                    ]
+                }
+            ]
+          }
+        }
+      },
+      "CrossAccountRole": {
+        "Type": "AWS::IAM::Role",
+        "Properties": {
+          "RoleName": {
+            "Fn::Sub": "tecton-${DeploymentName}-cross-account-role"
+          },
+          "MaxSessionDuration": 43200,
+          "Tags": [
+            {
+              "Key": "Name",
+              "Value": {
+                "Fn::Sub": "tecton-${DeploymentName}"
+              }
+            }
+          ],
+          "AssumeRolePolicyDocument": {
+            "Fn::If": [
+              "AllowStsMetadata",
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "AWS": [
+                        "arn:aws:iam::153453085158:root",
+                        { "Fn::Sub": "arn:aws:iam::${TectonAssumingAccountId}:root" }
+                      ]
+                    },
+                    "Action": ["sts:SetSourceIdentity", "sts:TagSession"]
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "AWS": [
+                        "arn:aws:iam::153453085158:root",
+                        { "Fn::Sub": "arn:aws:iam::${TectonAssumingAccountId}:root" }
+                      ]
+                    },
+                    "Action": "sts:AssumeRole",
+                    "Condition": {
+                      "StringEquals": {
+                        "sts:ExternalId": { "Ref": "CrossAccountExternalId" }
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "AWS": [
+                        "arn:aws:iam::153453085158:root",
+                        { "Fn::Sub": "arn:aws:iam::${TectonAssumingAccountId}:root" }
+                      ]
+                    },
+                    "Action": "sts:AssumeRole",
+                    "Condition": {
+                      "StringEquals": {
+                        "sts:ExternalId": { "Ref": "CrossAccountExternalId" }
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "Conditions": {
+      "AllowStsMetadata": {
+        "Fn::Equals": [{ "Ref": "AllowStsMetadata" }, "true"]
+      },
+      "CreateRiftCrossAccountPolicy": {
+        "Fn::Equals": [{ "Ref": "UseRiftCrossAccountPolicy" }, "true"]
+      }
+    }
+}
+  
