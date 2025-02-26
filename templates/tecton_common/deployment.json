@@ -1,6 +1,6 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "CloudFormation template for Tecton S3 bucket",
+    "Description": "CloudFormation template for Tecton deployment",
     "Parameters": {
       "DeploymentName": {
         "Type": "String",
@@ -278,6 +278,20 @@
       },
       "CreateRiftCrossAccountPolicy": {
         "Fn::Equals": [{ "Ref": "UseRiftCrossAccountPolicy" }, "true"]
+      }
+    },
+    "Outputs": {
+      "CrossAccountRoleARN": {
+        "Description": "ARN of the cross account role",
+        "Value": { "Fn::GetAtt": ["CrossAccountRole", "Arn"] }
+      },
+      "CrossAccountRoleName": {
+        "Description": "Name of the cross account role",
+        "Value": { "Ref": "CrossAccountRole" }
+      },
+      "S3Bucket": {
+        "Description": "Tecton S3 bucket",
+        "Value": { "Ref": "TectonBucket" }
       }
     }
 }

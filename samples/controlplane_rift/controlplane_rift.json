@@ -38,20 +38,20 @@
         "Description": "Tecton control plane role name (get from your Tecton rep)",
         "Default": "tecton-control-plane-role"
       },
-      "UseSparkCompute": {
+      "UseRiftCrossAccountPolicy": {
         "Type": "String",
-        "Description": "Set to true if also enable Spark compute",
-        "Default": "false",
+        "Description": "Set to true to enable Rift cross account policy",
+        "Default": "true",
         "AllowedValues": ["true", "false"]
       }
     },
   
     "Resources": {
-      "TectonStack": {
+      "TectonCommonStack": {
         "Type": "AWS::CloudFormation::Stack",
         "Properties": {
           "TemplateURL": {
-            "Fn::Sub": "FIXME"
+            "Fn::Sub": "https://tecton.ai.public.s3.us-west-2.amazonaws.com/cloudformation-templates/template-1740594650539.json"
           },
           "Parameters": {
             "DeploymentName": { "Ref": "DeploymentName" },
@@ -62,11 +62,23 @@
             "S3ReadWritePrincipals": {
               "Fn::Sub": "arn:aws:iam::${TectonControlPlaneAccountId}:root"
             },
-            "UseSparkCompute": { "Ref": "UseSparkCompute" },
-            "UseRiftCrossAccountPolicy": "true"
+            "UseRiftCrossAccountPolicy": { "Ref": "UseRiftCrossAccountPolicy" }
           }
         }
-      },
+      }
+    },
     "Outputs": {
+      "CrossAccountRoleARN": {
+        "Description": "ARN of the cross account role",
+        "Value": { "Fn::GetAtt": ["TectonCommonStack", "Outputs.CrossAccountRoleARN"] }
+      },
+      "CrossAccountRoleName": {
+        "Description": "Name of the cross account role",
+        "Value": { "Fn::GetAtt": ["TectonCommonStack", "Outputs.CrossAccountRoleName"] }
+      },
+      "S3Bucket": {
+        "Description": "Tecton S3 bucket",
+        "Value": { "Fn::GetAtt": ["TectonCommonStack", "Outputs.S3Bucket"] }
+      }
     }
-  }
+}
